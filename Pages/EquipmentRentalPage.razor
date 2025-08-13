@@ -1,0 +1,234 @@
+@page "/rental"
+@inject RentalApp.Data.RentalDbContext DbContext
+@using Microsoft.EntityFrameworkCore
+@using RentalApp.Rabbit
+@inject IRabbitMqService _rabbitMqService
+
+<h3 class="title">Add New Reservation</h3>
+@if (clients == null || equipments == null)
+{
+<p><em>Loading...</em></p>
+}
+else
+{
+<form class="form" @onsubmit="AddRental">
+<div class="form-group">
+<label>Select Client:</label>
+<select @bind="selectedClientId">
+<option value="">-- Select client --</option>
+@foreach (var client in clients)
+{
+@if (!client.IsBlocked)
+{
+<option value="@client.Id">@client.Name</option>
+}
+}
+</select>
+</div>
+
+    <div class="form-group">
+        <label>Select Equipment:</label>
+        <select @bind="selectedEquipmentId">
+            <option value="">-- Select equipment --</option>
+            @foreach (var eq in equipments)
+            {
+                @if (eq.IsAvailable)
+                {
+                    <option value="@eq.Id">@eq.Name</option>
+                }
+            }
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Return Date:</label>
+        <input type="date" @bind="returnDateInput" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+    </div>
+
+    <button type="submit" class="btn" disabled="@(!CanAddRental)">Add Reservation</button>
+
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <p class="message">@message</p>
+    }
+</form>
+}
+
+<h3 class="title mt-4">Reservation List</h3>
+@if (rentals == null)
+{
+<p><em>Loading reservations...</em></p>
+}
+else if (rentals.Count == 0)
+{
+<p>No reservations.</p>
+}
+else
+{
+<table class="reservation-table">
+<thead>
+<tr>
+<th>ID</th>
+<th>Client</th>
+<th>Equipment</th>
+<th>Rental Date</th>
+<th>Return Date</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody>
+@foreach (var r in rentals)
+{
+<tr>
+<td>@r.Id</td>
+<td>@r.Client?.Name</td>
+<td>@r.Equipment?.Name</td>
+<td>@r.RentalDate.ToLocalTime().ToShortDateString()</td>
+<td>@(r.ReturnDate?.ToLocalTime().ToShortDateString() ?? "-")</td>
+<td>
+<button class="btn-delete" @onclick="@(() => ConfirmDelete(r))">Delete</button>
+</td>
+</tr>
+}
+</tbody>
+</table>
+}
+
+@if (rentalToDelete != null)
+{
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded shadow-lg max-w-md w-full">
+            <h4 class="text-lg font-bold mb-4">Are you sure you want to delete the reservation?</h4>
+            <p><strong>Client:</strong> @rentalToDelete.Client?.Name</p>
+            <p><strong>Equipment:</strong> @rentalToDelete.Equipment?.Name</p>
+            <p><strong>Rental date:</strong> @rentalToDelete.RentalDate.ToLocalTime().ToShortDateString()</p>
+            <p><strong>Return date:</strong> @((rentalToDelete.ReturnDate?.ToLocalTime().ToShortDateString()) ?? "-")</p>
+
+            <div class="mt-6 flex justify-end gap-4">
+                <button class="bg-gray-300 px-4 py-2 rounded" @onclick="CancelDelete">Cancel</button>
+                <button class="bg-red-600 text-white px-4 py-2 rounded" @onclick="DeleteRental">Delete</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+private List<RentalApp.Entities.Client> clients = new();
+private List<RentalApp.Entities.Equipment> equipments = new();
+private List<RentalApp.Entities.Rental> rentals = new();
+
+private int? selectedClientId;
+private int? selectedEquipmentId;
+private DateTime? returnDateInput;
+private string message = string.Empty;
+
+private RentalApp.Entities.Rental? rentalToDelete;
+
+protected override async Task OnInitializedAsync()
+{
+    await LoadDataAsync();
+}
+
+private async Task LoadDataAsync()
+{
+    clients = await DbContext.Clients.ToListAsync();
+    equipments = await DbContext.Equipment.ToListAsync();
+    rentals = await DbContext.Rentals
+        .Include(r => r.Client)
+        .Include(r => r.Equipment)
+        .OrderByDescending(r => r.RentalDate)
+        .ToListAsync();
+}
+
+private bool CanAddRental =>
+    selectedClientId.HasValue && selectedEquipmentId.HasValue && returnDateInput.HasValue;
+
+private async Task AddRental()
+{
+    if (!CanAddRental)
+    {
+        message = "Please select the client, equipment, and return date.";
+        return;
+    }
+
+    var equipment = await DbContext.Equipment.FindAsync(selectedEquipmentId.Value);
+    if (equipment == null || !equipment.IsAvailable)
+    {
+        message = "The selected equipment is unavailable.";
+        return;
+    }
+
+    var rental = new RentalApp.Entities.Rental
+    {
+        ClientId = selectedClientId.Value,
+        EquipmentId = selectedEquipmentId.Value,
+        RentalDate = DateTime.UtcNow,
+        ReturnDate = returnDateInput.Value.ToUniversalTime()
+    };
+
+    DbContext.Rentals.Add(rental);
+    equipment.IsAvailable = false;
+
+    await DbContext.SaveChangesAsync();
+
+    await _rabbitMqService.SendLogAsync(new LogMessage
+    {
+        Operation = "Add Rental",
+        UserData = $"ClientId: {rental.ClientId}, EquipmentId: {rental.EquipmentId}, ReturnDate: {rental.ReturnDate?.ToShortDateString()}"
+    });
+
+    message = "The reservation was successfully added.";
+
+    selectedClientId = null;
+    selectedEquipmentId = null;
+    returnDateInput = null;
+
+    await LoadDataAsync();
+}
+
+
+private void ConfirmDelete(RentalApp.Entities.Rental rental)
+{
+    rentalToDelete = rental;
+    StateHasChanged();
+}
+
+private void CancelDelete()
+{
+    rentalToDelete = null;
+}
+
+private async Task DeleteRental()
+{
+    if (rentalToDelete == null)
+        return;
+
+    var rentalInDb = await DbContext.Rentals.FindAsync(rentalToDelete.Id);
+    if (rentalInDb != null)
+    {
+        var equipment = await DbContext.Equipment.FindAsync(rentalInDb.EquipmentId);
+        if (equipment != null)
+        {
+            equipment.IsAvailable = true;
+        }
+
+        DbContext.Rentals.Remove(rentalInDb);
+        await DbContext.SaveChangesAsync();
+
+        await _rabbitMqService.SendLogAsync(new LogMessage
+        {
+            Operation = "Delete Rental",
+            UserData = $"RentalId: {rentalInDb.Id}, ClientId: {rentalInDb.ClientId}, EquipmentId: {rentalInDb.EquipmentId}"
+        });
+
+        message = "The reservation was successfully deleted.";
+    }
+    else
+    {
+        message = "No reservation found to delete.";
+    }
+
+    rentalToDelete = null;
+    await LoadDataAsync();
+}
+}

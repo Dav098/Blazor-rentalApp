@@ -1,0 +1,70 @@
+.title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.form {
+    max-width: 500px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+input[type="text"],
+input[type="date"] {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+}
+
+.btn {
+    background-color: #2563eb;
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+}
+
+.btn:hover:not(:disabled) {
+    background-color: #1d4ed8;
+}
+
+.message {
+    color: #16a34a;
+    margin-top: 1rem;
+    font-weight: 500;
+}
+
+.client-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 2rem;
+}
+
+.client-table th,
+.client-table td {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0.5rem;
+    text-align: left;
+}

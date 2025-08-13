@@ -1,0 +1,119 @@
+form, div {
+    max-width: 480px;
+    margin: 1rem auto;
+    padding: 1rem;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+    color: #333;
+}
+
+select, input[type="date"] {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    border: 1.5px solid #ccc;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+select:focus, input[type="date"]:focus {
+    border-color: #7c3aed; 
+    outline: none;
+}
+
+button {
+    background-color: #7c3aed;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    font-size: 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
+    background-color: #5a1fbf;
+}
+
+p {
+    margin-top: 0.5rem;
+    color: #7c3aed;
+    font-weight: 600;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 2rem;
+}
+
+thead tr {
+    background-color: #7c3aed;
+    color: white;
+}
+
+th, td {
+    padding: 0.75rem 1rem;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+tbody tr:nth-child(even) {
+    background-color: #f7f7fb;
+}
+
+button.bg-red-600 {
+    background-color: #dc2626;
+}
+
+button.bg-red-600:hover {
+    background-color: #b91c1c;
+}
+
+.fixed.inset-0 {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.fixed > div {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 12px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+}
+
+.mt-6 {
+    margin-top: 1.5rem;
+}
+
+.flex {
+    display: flex;
+}
+
+.justify-end {
+    justify-content: flex-end;
+}
+
+.gap-4 {
+    gap: 1rem;
+}
